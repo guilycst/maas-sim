@@ -30,7 +30,36 @@ jobs:
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker buildx create --driver docker-container --use
           docker buildx build --platform linux/amd64,linux/arm64 --push \
+            --metadata-file image-metadata.json \
             --tag "ghcr.io/$GITHUB_REPOSITORY:$GITHUB_REF_NAME" \
             --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             --label "org.opencontainers.image.version=$GITHUB_REF_NAME" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" .
+      - name: Verify and export published images
+        shell: bash
+        run: |
+          repository="ghcr.io/$GITHUB_REPOSITORY"
+          tag="$repository:$GITHUB_REF_NAME"
+          index_digest=$(jq -er '."containerimage.digest"' image-metadata.json)
+          docker buildx imagetools inspect --raw "$repository@$index_digest" > image-index.json
+          mkdir release-images
+          for arch in amd64 arm64; do
+            digest=$(jq -er --arg arch "$arch" '
+              .manifests[] | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest
+            ' image-index.json)
+            source="$repository@$digest"
+            docker pull --platform "linux/$arch" "$source"
+            test "$(docker image inspect --format '{{.Architecture}}' "$source")" = "$arch"
+            test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$source")" = "$GITHUB_SHA"
+            docker tag "$source" "$tag"
+            docker save "$tag" | gzip -1 > "release-images/maas-sim-$GITHUB_REF_NAME-linux-$arch.tar.gz"
+          done
+          printf '%s\n' "$index_digest" > release-images/image-digest.txt
+          cd release-images
+          sha256sum ./*.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: container-images
+          path: release-images/
+          if-no-files-found: error
+          compression-level: 0

@@ -16,6 +16,8 @@ docker run --rm -p 127.0.0.1:5240:5240 \
 
 The image listens on all container interfaces. Publish the HTTP port on host loopback for local tests. Docker mode also needs access to a Docker daemon. Use it with trusted node images and bootstrap data on an isolated test host.
 
+If a registry pull is unavailable, download the archive for your platform from the [GitHub release](https://github.com/guilycst/maas-sim/releases/tag/v0.0.1). Load it with `docker load --input maas-sim-v0.0.1-linux-amd64.tar.gz`, using the `arm64` archive on ARM hosts, then run the same command above.
+
 ## Start in memory
 
 Requires Go 1.23 or later.
