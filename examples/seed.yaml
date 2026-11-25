@@ -1,0 +1,21 @@
+schemaVersion: 1
+domain: lab.test
+zones: [az1]
+resourcePools: [lab]
+tags: [small, large]
+machines:
+  - hostname: lab-node-01
+    zone: az1
+    resourcePool: lab
+    tags: [small]
+    cpuCount: 4
+    memoryMiB: 8192
+    diskGiB: 80
+  - systemID: lab002
+    hostname: lab-node-02
+    zone: az1
+    resourcePool: lab
+    tags: [large]
+    cpuCount: 8
+    memoryMiB: 16384
+    diskGiB: 160
